@@ -487,11 +487,10 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 //adc convert complete (dma finished filling in array)
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {	
-	//send out all data through USB
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+	//send out all data through USB in form "data,data,.."
 	for (int i = 0; i < aryLen; i++){
-		//data = ADCBuffer[i] & 0x00FF;
-		my_printf("%u \r\n", vals[i]);
+		my_printf("%u,", vals[i]);
 	}
 	
 	
@@ -510,6 +509,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	
 	//start the ADC_DMA
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)vals, aryLen);
+	
+	//send out |, through USB
+	//------------------------- 0 is used as an angle placeholder for now -------------//
+	my_printf("|,0,");
 }
 
 
