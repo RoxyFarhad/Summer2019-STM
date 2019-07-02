@@ -145,11 +145,10 @@ int main(void)
 	my_printf("starting DMA \r\n");
 
 
-	//start the DMA transfer
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)vals, aryLen);
+//start the timer: DMA started in timer callback
+	HAL_TIM_PWM_Start_IT(&htim3, TIM_CHANNEL_1);
 
-	
-	my_printf("DMA started\r\n");
+
 
 
   /* USER CODE END 2 */
@@ -297,9 +296,9 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 0;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 0;
+  htim3.Init.Period = 21599;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
   {
     Error_Handler();
@@ -320,7 +319,7 @@ static void MX_TIM3_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
+  sConfigOC.Pulse = 5;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
@@ -488,16 +487,35 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 //adc convert complete (dma finished filling in array)
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
-	
-	my_printf("in conv cplt \r\n");
-	
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {	
 	//send out all data through USB
 	for (int i = 0; i < aryLen; i++){
 		//data = ADCBuffer[i] & 0x00FF;
 		my_printf("%u \r\n", vals[i]);
-	}	
+	}
+	
+	
+
+	//stop the dma and re-enable timer interrupt
+	//HAL_ADC_Stop_DMA(&hadc1);
+	HAL_NVIC_EnableIRQ(TIM3_IRQn);
 }
+
+
+
+//timer low to high transition
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+	//disable timer interrupt
+	HAL_NVIC_DisableIRQ(TIM3_IRQn);
+	
+	//start the ADC_DMA
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)vals, aryLen);
+}
+
+
+
+
+
 
 
 /* USER CODE END 4 */
