@@ -58,8 +58,13 @@ UART_HandleTypeDef huart1;
 /* USER CODE BEGIN PV */
 
 //memory buffer for DMA transfer
-const int aryLen = 500;
-uint8_t vals[aryLen];
+const int numVals = 500;
+uint8_t vals[numVals];
+
+//small buffer for marking the start of transfer
+//will hold the encoder value and a bunch of 255
+const int numStartBytes = 10;
+uint8_t markStart[numStartBytes];
 
 /* USER CODE END PV */
 
@@ -112,6 +117,17 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 
+	
+	
+	//set the starting char array to all 255
+	for (int i = 0; i < numStartBytes; i++) {
+		markStart[i] = 255;
+	}
+	
+	
+	
+	
+	
   /* USER CODE END 1 */
   
 
@@ -488,15 +504,27 @@ static void MX_GPIO_Init(void)
 
 //adc convert complete (dma finished filling in array)
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
-	//send out all data through USB in form "data,data,.."
-	for (int i = 0; i < aryLen; i++){
+	/*send out all data through USB in form "data,data,.."
+	for (int i = 0; i < numVals; i++){
 		my_printf("%u,", vals[i]);
 	}
+	*/
+	
+	
+	
+	
+	//optimization testing: just send all 500 values as bytes
+	HAL_UART_Transmit(&huart1, (uint8_t*)vals, numVals, 0xffffff);
+	
+	
+	
+	
+	
+	
 	
 	
 
-	//stop the dma and re-enable timer interrupt
-	//HAL_ADC_Stop_DMA(&hadc1);
+	//re-enable timer interrupt
 	HAL_NVIC_EnableIRQ(TIM3_IRQn);
 }
 
@@ -508,11 +536,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	HAL_NVIC_DisableIRQ(TIM3_IRQn);
 	
 	//start the ADC_DMA
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)vals, aryLen);
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)vals, numVals);
 	
 	//send out |, through USB
 	//------------------------- 0 is used as an angle placeholder for now -------------//
-	my_printf("|,0,");
+	//my_printf("|,0,");
+	
+	
+	
+	//optimization testing: send out 10 bytes of 255
+	HAL_UART_Transmit(&huart1, (uint8_t*)markStart, numStartBytes, 0xffffff);
 }
 
 
