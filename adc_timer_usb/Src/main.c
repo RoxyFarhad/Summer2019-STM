@@ -337,7 +337,7 @@ static void MX_TIM3_Init(void)
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = 5;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCFastMode = TIM_OCFAST_ENABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
   {
     Error_Handler();
@@ -504,17 +504,17 @@ static void MX_GPIO_Init(void)
 
 //adc convert complete (dma finished filling in array)
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
-	/*send out all data through USB in form "data,data,.."
+	//send out all data through USB in form "data,data,.."
 	for (int i = 0; i < numVals; i++){
 		my_printf("%u,", vals[i]);
 	}
-	*/
+	//*/
 	
 	
 	
 	
 	//optimization testing: just send all 500 values as bytes
-	HAL_UART_Transmit(&huart1, (uint8_t*)vals, numVals, 0xffffff);
+	//HAL_UART_Transmit(&huart1, (uint8_t*)vals, numVals, 0xffffff);
 	
 	
 	
@@ -545,7 +545,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	
 	
 	//optimization testing: send out 10 bytes of 255
-	HAL_UART_Transmit(&huart1, (uint8_t*)markStart, numStartBytes, 0xffffff);
+	//HAL_UART_Transmit(&huart1, (uint8_t*)markStart, numStartBytes, 0xffffff);
 }
 
 

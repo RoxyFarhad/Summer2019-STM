@@ -85,9 +85,8 @@ uint8_t vals[numDataBytes];
 uint8_t *encoderStart = vals + numStartBytes;
 uint8_t *dataStart = vals + numOverheadBytes;
 
-//start sequence
-const uint16_t numStart = 5;
-uint8_t startSeq[numStart] = {0xff, 0xff, 0xff, 0xff, 0xff};
+//ready to send flag
+uint8_t readyToSend = 0;
 
 
 //initial encoder position, calculated quadrature position
@@ -305,10 +304,10 @@ int main(void)
 
 
 	//start the PWM timer (which starts data collection)
-	HAL_TIM_PWM_Start_IT(&htim3, TIM_CHANNEL_1);
+	//HAL_TIM_PWM_Start_IT(&htim3, TIM_CHANNEL_1);
 
 
-	
+	readyToSend = 1;
 	
 
 
@@ -322,8 +321,33 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+		
     /* USER CODE BEGIN 3 */
+		
+		
+		
+		
+		
+		//check readytosend flag. if ready, send out through USB and re-enable timer
+		if (readyToSend) {
+			//send out values through USB
+			//note: this BLOCKS EVERYTHING until it's done
+			//probably smarter ways to do this, with a counter and timeout
+			while(CDC_Transmit_FS(vals, numTotalBytes) != USBD_OK) {}
+			
+			//re-enable timer interrupt and DMA interrupts, reset ready to send
+			HAL_NVIC_EnableIRQ(TIM3_IRQn);
+			HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+			readyToSend = 0;
+		}
+		
+		
+		
+		
+		
+		
+		
+		
   }
   /* USER CODE END 3 */
 }
@@ -740,10 +764,16 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 	//send out values through USB
 	//note: this BLOCKS EVERYTHING until it's done
 	//probably smarter ways to do this, with a counter and timeout
-	while(CDC_Transmit_FS(vals, numTotalBytes) != USBD_OK) {}
+	//while(CDC_Transmit_FS(vals, numTotalBytes) != USBD_OK) {}
+	
 	
 	//re-enable timer interrupt
-	HAL_NVIC_EnableIRQ(TIM3_IRQn);
+	//HAL_NVIC_EnableIRQ(TIM3_IRQn);
+	
+	
+	//testing: set ready to send flag to 1, let main take care of work
+	readyToSend = 1;
+	HAL_NVIC_DisableIRQ(DMA2_Stream0_IRQn);
 }
 
 

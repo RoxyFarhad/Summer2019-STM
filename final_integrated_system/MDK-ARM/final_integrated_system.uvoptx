@@ -152,9 +152,9 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>746</LineNumber>
+          <LineNumber>339</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134219822</Address>
+          <Address>134240782</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -163,7 +163,23 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>../Src/main.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\final_integrated_system\../Src/main.c\746</Expression>
+          <Expression>\\final_integrated_system\../Src/main.c\339</Expression>
+        </Bp>
+        <Bp>
+          <Number>1</Number>
+          <Type>0</Type>
+          <LineNumber>239</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134219176</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>C:\Users\fumin\Documents\GitHub\final_integrated_system\Src\stm32f7xx_it.c</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\final_integrated_system\../Src/stm32f7xx_it.c\239</Expression>
         </Bp>
       </Breakpoint>
       <Tracepoint>
