@@ -945,9 +945,9 @@ interwork --depend=final_integrated_system\startup_stm32f746xx.d -ofinal_integr
 ated_system\startup_stm32f746xx.o -I.\RTE\_final_integrated_system -IC:\Users\f
 umin\AppData\Local\Arm\Packs\ARM\CMSIS\5.5.1\CMSIS\Core\Include -IC:\Users\fumi
 n\AppData\Local\Arm\Packs\Keil\STM32F7xx_DFP\2.11.0\Drivers\CMSIS\Device\ST\STM
-32F7xx\Include --predefine="__EVAL SETA 1" --predefine="__MICROLIB SETA 1" --pr
-edefine="__UVISION_VERSION SETA 528" --predefine="_RTE_ SETA 1" --predefine="ST
-M32F746xx SETA 1" --list=startup_stm32f746xx.lst startup_stm32f746xx.s
+32F7xx\Include --predefine="__MICROLIB SETA 1" --predefine="__UVISION_VERSION S
+ETA 528" --predefine="_RTE_ SETA 1" --predefine="STM32F746xx SETA 1" --list=sta
+rtup_stm32f746xx.lst startup_stm32f746xx.s
 
 
 
@@ -2188,4 +2188,4 @@ Symbol: __main
       At line 204 in file startup_stm32f746xx.s
 Comment: __main used once
 2 symbols
-462 symbols in table
+461 symbols in table

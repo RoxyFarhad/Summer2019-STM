@@ -81,7 +81,7 @@ const uint16_t numOverheadBytes = 12;		//total overhead including encoder
 const uint16_t numStartBytes = 10;			//pure overhead (for now is 0xff)
 
 //data array and pointers to where encoder bytes and data bytes start
-uint8_t vals[numDataBytes];
+uint8_t vals[numTotalBytes];
 uint8_t *encoderStart = vals + numStartBytes;
 uint8_t *dataStart = vals + numOverheadBytes;
 
@@ -284,31 +284,31 @@ int main(void)
 
 
 
-	//get encoder reading first, then wait for USB
 	//init DWT
 	DWT_Init();
 	
+	
+	/*
 	//enable encoder, get the initial position, start encoder timer
 	HAL_GPIO_WritePin(NSS_GPIO_Port, NSS_Pin, GPIO_PIN_RESET);
 	getAMTPos(encoderStart);
 	initPos = (((uint16_t) encoderStart[0]) << 8) | encoderStart[1];
 	HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_ALL);
+	*/
 
 
-
-
-	//keep trying to send start seq until successful
-	//while (CDC_Transmit_FS(startSeq, numStart) != USBD_OK){}
-
-
+	//add "fake" usb transmit request to reset buffers?
+	int i = 0;
+	while(CDC_Transmit_FS(vals, numTotalBytes) != USBD_OK) {
+		i++;
+	}
+	my_printf("ended fake transmit \r\n");
 
 
 	//start the PWM timer (which starts data collection)
-	//HAL_TIM_PWM_Start_IT(&htim3, TIM_CHANNEL_1);
-
-
-	readyToSend = 1;
+	HAL_TIM_PWM_Start_IT(&htim3, TIM_CHANNEL_1);
 	
+
 
 
 
@@ -321,9 +321,8 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-		
+
     /* USER CODE BEGIN 3 */
-		
 		
 		
 		
@@ -333,12 +332,11 @@ int main(void)
 			//send out values through USB
 			//note: this BLOCKS EVERYTHING until it's done
 			//probably smarter ways to do this, with a counter and timeout
-			while(CDC_Transmit_FS(vals, numTotalBytes) != USBD_OK) {}
-			
-			//re-enable timer interrupt and DMA interrupts, reset ready to send
-			HAL_NVIC_EnableIRQ(TIM3_IRQn);
-			HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+			while(CDC_Transmit_FS(vals, numTotalBytes) != USBD_OK);				
+				
+			//reset ready to send, re-enable timer interrupt
 			readyToSend = 0;
+			HAL_NVIC_EnableIRQ(TIM3_IRQn);
 		}
 		
 		
@@ -430,7 +428,7 @@ static void MX_ADC1_Init(void)
   hadc1.Instance = ADC1;
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_8B;
-  hadc1.Init.ScanConvMode = DISABLE;
+  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
   hadc1.Init.ContinuousConvMode = ENABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
@@ -648,12 +646,13 @@ static void MX_USART2_UART_Init(void)
   */
 static void MX_DMA_Init(void) 
 {
+
   /* DMA controller clock enable */
   __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
   /* DMA2_Stream0_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 1, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
 
 }
@@ -755,41 +754,33 @@ static void MX_GPIO_Init(void)
 
 
 
-
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
+	my_printf("half_cplt \r\n");
+}
 
 
 
 //adc convert complete (dma finished filling in array)
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
-	//send out values through USB
-	//note: this BLOCKS EVERYTHING until it's done
-	//probably smarter ways to do this, with a counter and timeout
-	//while(CDC_Transmit_FS(vals, numTotalBytes) != USBD_OK) {}
-	
-	
-	//re-enable timer interrupt
-	//HAL_NVIC_EnableIRQ(TIM3_IRQn);
-	
-	
-	//testing: set ready to send flag to 1, let main take care of work
+	//just sets ready to send, lets main take care of work
 	readyToSend = 1;
-	HAL_NVIC_DisableIRQ(DMA2_Stream0_IRQn);
 }
 
 
 
 //timer low to high transition: start of Tx pulse
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-	//disable timer interrupt
-	HAL_NVIC_DisableIRQ(TIM3_IRQn);
+	//disable timer interrupt, re-enable adc interrupts
+	HAL_NVIC_DisableIRQ(TIM3_IRQn);	
 	
 	//start the ADC_DMA
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)dataStart, numDataBytes);
 	
 	//get the encoder value, put into array
-	quadraturePos = (htim1.Instance->CNT + initPos) & lowTwelveMask;
-	encoderStart[0] = (quadraturePos >> 8) & lowEightMask;
-	encoderStart[1] =	quadraturePos & lowEightMask;
+	//quadraturePos = (htim1.Instance->CNT + initPos) & lowTwelveMask;
+	//encoderStart[0] = (quadraturePos >> 8) & lowEightMask;
+	//encoderStart[1] =	quadraturePos & lowEightMask;
+	
 }
 
 
