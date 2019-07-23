@@ -326,7 +326,7 @@ int main(void)
 		
 		
 		
-		
+		/*
 		//check readytosend flag. if ready, send out through USB and re-enable timer
 		if (readyToSend) {
 			//send out values through USB
@@ -338,7 +338,7 @@ int main(void)
 			readyToSend = 0;
 			HAL_NVIC_EnableIRQ(TIM3_IRQn);
 		}
-		
+		*/
 		
 		
 		
@@ -567,7 +567,7 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 0;
+  htim3.Init.Prescaler = 4;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim3.Init.Period = 21599;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -592,7 +592,7 @@ static void MX_TIM3_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 5;
+  sConfigOC.Pulse = 1;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
@@ -754,35 +754,41 @@ static void MX_GPIO_Init(void)
 
 
 
-void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
-	my_printf("half_cplt \r\n");
-}
-
-
-
 //adc convert complete (dma finished filling in array)
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 	//just sets ready to send, lets main take care of work
-	readyToSend = 1;
+	
+	
+	
+	
+	//send out values through USB
+	//note: this BLOCKS EVERYTHING until it's done
+	//probably smarter ways to do this, with a counter and timeout
+	while(CDC_Transmit_FS(vals, numTotalBytes) != USBD_OK);				
+	
+	//re-enable timer interrupt
+	//__NVIC_EnableIRQ(TIM3_IRQn);
+	__HAL_TIM_ENABLE_IT(&htim3, TIM_IT_UPDATE);
 }
 
 
 
 //timer low to high transition: start of Tx pulse
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-	//disable timer interrupt, re-enable adc interrupts
-	HAL_NVIC_DisableIRQ(TIM3_IRQn);	
+	if (htim->Instance == TIM3) {
+		//disable timer interrupt
+		//__NVIC_DisableIRQ(TIM3_IRQn);	
+		__HAL_TIM_DISABLE_IT(&htim3, TIM_IT_UPDATE);
+		
+		//start the ADC_DMA
+		HAL_ADC_Start_DMA(&hadc1, (uint32_t *)dataStart, numDataBytes);
 	
-	//start the ADC_DMA
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)dataStart, numDataBytes);
-	
-	//get the encoder value, put into array
-	//quadraturePos = (htim1.Instance->CNT + initPos) & lowTwelveMask;
-	//encoderStart[0] = (quadraturePos >> 8) & lowEightMask;
-	//encoderStart[1] =	quadraturePos & lowEightMask;
-	
+		//get the encoder value, put into array
+		//quadraturePos = (htim1.Instance->CNT + initPos) & lowTwelveMask;
+		//encoderStart[0] = (quadraturePos >> 8) & lowEightMask;
+		//encoderStart[1] =	quadraturePos & lowEightMask;
+	}
 }
-
 
 
 
