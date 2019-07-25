@@ -1378,7 +1378,7 @@ HAL_StatusTypeDef HAL_TIM_PWM_Start_IT(TIM_HandleTypeDef *htim, uint32_t Channel
     case TIM_CHANNEL_1:
     {
       /* Enable the TIM Capture/Compare 1 interrupt */
-      __HAL_TIM_ENABLE_IT(htim, TIM_IT_UPDATE);
+      __HAL_TIM_ENABLE_IT(htim, TIM_IT_CC1);
       break;
     }
 

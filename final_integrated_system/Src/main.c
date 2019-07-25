@@ -100,6 +100,16 @@ uint8_t lowEightMask = 0xFFU;
 
 
 
+/*
+//tracking transmission speed
+uint16_t numSent = 0;
+uint8_t startSet = 0;
+uint32_t startTime = 0;
+*/
+
+
+
+
 
 /* USER CODE END PV */
 
@@ -288,13 +298,13 @@ int main(void)
 	DWT_Init();
 	
 	
-	/*
+	
 	//enable encoder, get the initial position, start encoder timer
 	HAL_GPIO_WritePin(NSS_GPIO_Port, NSS_Pin, GPIO_PIN_RESET);
 	getAMTPos(encoderStart);
 	initPos = (((uint16_t) encoderStart[0]) << 8) | encoderStart[1];
 	HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_ALL);
-	*/
+	
 
 
 	//add "fake" usb transmit request to reset buffers?
@@ -305,8 +315,9 @@ int main(void)
 	my_printf("ended fake transmit \r\n");
 
 
-	//start the PWM timer (which starts data collection)
-	HAL_TIM_PWM_Start_IT(&htim3, TIM_CHANNEL_1);
+	
+	//start the timer that sets when Tx are sent
+	HAL_TIM_Base_Start_IT(&htim3);
 	
 
 
@@ -561,7 +572,6 @@ static void MX_TIM3_Init(void)
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
 
   /* USER CODE BEGIN TIM3_Init 1 */
 
@@ -571,7 +581,7 @@ static void MX_TIM3_Init(void)
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim3.Init.Period = 21599;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
   {
     Error_Handler();
@@ -581,28 +591,15 @@ static void MX_TIM3_Init(void)
   {
     Error_Handler();
   }
-  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
-  {
-    Error_Handler();
-  }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 1;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
   /* USER CODE BEGIN TIM3_Init 2 */
 
   /* USER CODE END TIM3_Init 2 */
-  HAL_TIM_MspPostInit(&htim3);
 
 }
 
@@ -681,6 +678,9 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(USB_PowerSwitchOn_GPIO_Port, USB_PowerSwitchOn_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(OUT_GPIO_Port, OUT_Pin, GPIO_PIN_RESET);
+
   /*Configure GPIO pin : USER_Btn_Pin */
   GPIO_InitStruct.Pin = USER_Btn_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
@@ -739,6 +739,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(USB_OverCurrent_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : OUT_Pin */
+  GPIO_InitStruct.Pin = OUT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(OUT_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pins : RMII_TX_EN_Pin RMII_TXD0_Pin */
   GPIO_InitStruct.Pin = RMII_TX_EN_Pin|RMII_TXD0_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -756,8 +763,20 @@ static void MX_GPIO_Init(void)
 
 //adc convert complete (dma finished filling in array)
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
-	//just sets ready to send, lets main take care of work
+	/*
+	//tracking send rate
+	if (!startSet) {
+		startTime = HAL_GetTick();
+		startSet = 1;
+	}
 	
+	
+	if ((HAL_GetTick() - startTime) > 1000) {
+		my_printf("num sent %d \r\n", numSent);
+		numSent = 0;
+		startSet = 0;
+	}
+	*/
 	
 	
 	
@@ -767,8 +786,11 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 	while(CDC_Transmit_FS(vals, numTotalBytes) != USBD_OK);				
 	
 	//re-enable timer interrupt
-	//__NVIC_EnableIRQ(TIM3_IRQn);
 	__HAL_TIM_ENABLE_IT(&htim3, TIM_IT_UPDATE);
+	
+	//inc counter
+	//numSent++;
+	
 }
 
 
@@ -776,17 +798,21 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 //timer low to high transition: start of Tx pulse
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if (htim->Instance == TIM3) {
+		//send out the Tx pulse
+		OUT_GPIO_Port->BSRR = 0x0200U;
+		OUT_GPIO_Port->BSRR = 0x02000000U;
+		
+		
 		//disable timer interrupt
-		//__NVIC_DisableIRQ(TIM3_IRQn);	
 		__HAL_TIM_DISABLE_IT(&htim3, TIM_IT_UPDATE);
 		
 		//start the ADC_DMA
 		HAL_ADC_Start_DMA(&hadc1, (uint32_t *)dataStart, numDataBytes);
 	
 		//get the encoder value, put into array
-		//quadraturePos = (htim1.Instance->CNT + initPos) & lowTwelveMask;
-		//encoderStart[0] = (quadraturePos >> 8) & lowEightMask;
-		//encoderStart[1] =	quadraturePos & lowEightMask;
+		quadraturePos = (htim1.Instance->CNT + initPos) & lowTwelveMask;
+		encoderStart[0] = (quadraturePos >> 8) & lowEightMask;
+		encoderStart[1] =	quadraturePos & lowEightMask;		
 	}
 }
 
