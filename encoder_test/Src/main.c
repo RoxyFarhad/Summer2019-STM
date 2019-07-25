@@ -110,8 +110,7 @@ void DWT_Delay(uint32_t usDelay);
 
 
 //package read value from encoder. directly modifies posArray
-//will return 0 on failure
-int getAMTPos(uint8_t *posArray);
+void getAMTPos(uint8_t *posArray);
 
 
 
@@ -179,7 +178,7 @@ void DWT_Delay(uint32_t usDelay)
 
 
 //encoder reading
-int getAMTPos(uint8_t *posArray) {
+void getAMTPos(uint8_t *posArray) {
 	//var to help track status and commands
 	uint8_t readyToRecv = 0;
 	uint8_t READPOS = 0x10;		//read command
